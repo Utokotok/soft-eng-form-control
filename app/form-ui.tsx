@@ -30,11 +30,11 @@ export function InputField({ label, hint, required, children }: { label: string;
   }) : children;
   return <div className={`field${invalid ? " field-error" : ""}`}><label htmlFor={id}>{label}{isRequired && <span> *</span>}</label>{control}{help && <small className={invalid ? "error-text" : undefined} id={`${id}-help`}>{help}</small>}</div>;
 }
-export function Notice({ message, success = false }: { message: string; success?: boolean }) {
+export function Notice({ message }: { message: string }) {
   const summary = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (message && !success) summary.current?.focus(); }, [message, success]);
+  useEffect(() => { if (message) summary.current?.focus(); }, [message]);
   if (!message) return null;
-  return <div ref={summary} tabIndex={-1} className={success ? "saved-message" : "error-summary"} role={success ? "status" : "alert"}>{success ? <CheckCircle2 size={18}/> : <XCircle size={18}/>}<span>{message}</span></div>;
+  return <div ref={summary} tabIndex={-1} className="error-summary" role="alert"><XCircle size={18}/><span>{message}</span></div>;
 }
 export function SuccessDialog({ message, title = "Saved successfully", onDismiss, children }: { message: string; title?: string; onDismiss: () => void; children?: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -64,4 +64,3 @@ export function SuccessDialog({ message, title = "Saved successfully", onDismiss
   </dialog>;
 }
 export function Facts({ items }: { items: [string, ReactNode][] }) { return <dl className="context-facts">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || "—"}</dd></div>)}</dl>; }
-export function fileError(file: File, limit = 10) { return file.size === 0 ? "The selected file is empty. Choose a valid document." : file.size > limit * 1024 * 1024 ? `Files must be ${limit} MB or smaller.` : !["image/jpeg", "image/png", "application/pdf"].includes(file.type) ? "Use a PDF, JPG, or PNG file." : ""; }

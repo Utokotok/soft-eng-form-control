@@ -35,7 +35,7 @@ Reviewed against the supplied SGS SOFT ENG 1.pdf, the three supplied PHS example
 Source: printed pp. 11, 36–39; Figures 6, 6.1, 7, 8, 89 and 90 (ERD pp. 103–104).
 
 - The previous intake began with manual fields. It now starts with the original PHS upload, then admin verification alongside the original pages, followed by home-location pinning, supporting requirements, and HR remarks.
-- Per the user's latest instruction, uploading a PHS supplies fixed sample values. No Tesseract, OCR execution, model download, or extraction service is present. The UI identifies the sample prefill, and the stored intake metadata identifies its source as `dummy`.
+- Uploading a PHS supplies fixed sample values. No Tesseract, OCR execution, model download, or extraction service is present. The UI identifies the sample prefill, and the stored intake metadata identifies its source as `dummy`.
 - Original PHS files are retained locally in IndexedDB. Editing verification fields does not alter the original images.
 - The verification fields follow the sample PHS: application and identification; personal details; family and emergency contact; education and skills; employment and military/police service; declarations; and repeating siblings, dependents, seminars, employment history, and character references.
 - `person` core fields are kept separate from the application, PHS details, supporting documents, and admin remarks. Names include middle name and suffix; birth date and contact number follow the ERD. Age is not entered separately because it can be derived from birth date.
