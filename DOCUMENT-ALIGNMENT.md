@@ -2,6 +2,12 @@
 
 ## Current form selection update
 
+### Multiple duties and site pinning update
+
+Deployment creation retains the nine original data inputs (plus the deployment selector); duty rows can be added or removed. Choosing an existing deployment displays its guard/site/post/period/DDO as read-only context and adds shifts to that deployment instead of creating another deployment for every shift. One deployment therefore has many `shift_assignments`. Conflict detection uses actual duty intervals across the guard’s deployments and within the submitted batch, not deployment periods. Adjacent shifts are allowed, overnight shifts require the next date, shifts must fit the deployment and DDO assignment, and staffing limits use maximum concurrent occupancy. Saves revalidate against the current local store and append the entire batch together. No automatic recurrence or minimum-rest policy is assumed.
+
+Site registration now requires written `site_address` plus a Leaflet map pin. The frontend stores `site_location: { latitude, longitude }` on the client-site record; map these to the ERD’s site latitude/longitude columns when adding the backend. Existing records without coordinates remain readable. The shared map now uses context-specific Home location / Site location labels, including accessible map instructions. This supersedes the earlier no-site-map decision below.
+
 The latest selection replaces Equipment Issuance with **Staff Account Registration**. The four active forms are now Applicant Intake, Staff Account Registration, Guard Deployment & Scheduling, and Client & Site Registration. The older logistics/attendance reviews below are historical references.
 
 Staff registration follows `person → user → role` in Figure 89 (printed p. 103). It has nine editable native inputs, excluding map controls and buttons: first/middle/last name, suffix, birth date, home address, contact number, email, assigned role. Role options are HR, Finance, Operations and Logistics. The represented operator is Super Admin. New records receive generated identifiers, creation metadata and `pending_email_verification` status; no user can manually activate an unverified account through this form. Duplicate email/name-and-birth-date checks run against existing local staff records. Production role authorization, credential setup and verification-email delivery remain backend work. No email is sent by the UI.

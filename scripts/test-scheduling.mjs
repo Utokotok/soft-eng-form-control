@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { stripTypeScriptTypes } from "node:module";
+
+// Isolate the pure scheduling rules from browser storage and use a stable clock.
+const source = (await readFile(new URL("../app/operations-domain.ts", import.meta.url), "utf8")).replace(/import .* from "\.\/domain";/, `const GUARD = { employee_id: 182, employee_number: "GD-0182", name: "Test Guard", employment_status: "active", license_expires_on: "2027-08-18" }; const today = () => "2026-10-23";`);
+const { validateDutyBatch, initialOperations, isoLocal } = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString("base64")}`);
+const values = { guard: "182", site: "SITE-01", post: "POST-01", deploymentStart: "2026-11-01T00:00", deploymentEnd: "", ddo: "DDO-94" };
+const duty = (id, start, end) => ({ id, shiftStart: start, shiftEnd: end, restDay: false });
+const monday = duty("mon", "2026-11-02T08:00", "2026-11-02T16:00");
+const tuesday = duty("tue", "2026-11-03T08:00", "2026-11-03T16:00");
+const deployment = { deployment_id: "DEP-TEST", employee_id: 182, post_id: "POST-01", start_at: isoLocal(values.deploymentStart), end_at: null, status: "active" };
+const saved = { ...initialOperations, deployments: [deployment], shifts: [{ shift_assignment_id: "SHIFT-TEST", deployment_id: deployment.deployment_id, scheduled_start: isoLocal(monday.shiftStart), scheduled_end: isoLocal(monday.shiftEnd), status: "assigned", rest_day_indicator: false }], ddoAssignments: [{ ddo_assignment_id: "DDOA-TEST", deployment_id: deployment.deployment_id, ddo_id: "DDO-94", assignment_from: deployment.start_at, assignment_until: "2027-01-01T00:00:00+08:00", status: "active" }] };
+assert.deepEqual(validateDutyBatch(values, [monday, tuesday], initialOperations), {});
+assert.deepEqual(validateDutyBatch({ ...values, deploymentId: deployment.deployment_id }, [tuesday], saved), {});
+assert.ok(Object.keys(validateDutyBatch({ ...values, deploymentId: deployment.deployment_id }, [monday], saved)).length);
+assert.ok(Object.keys(validateDutyBatch({ ...values, post: "POST-02" }, [monday], saved)).length, "Guard conflicts apply across posts");
+assert.ok(Object.keys(validateDutyBatch(values, [monday, { ...monday, id: "duplicate" }], initialOperations)).length);
+assert.deepEqual(validateDutyBatch(values, [monday, duty("adjacent", "2026-11-02T16:00", "2026-11-02T20:00")], initialOperations), {});
+assert.deepEqual(validateDutyBatch(values, [duty("night", "2026-11-02T22:00", "2026-11-03T06:00")], initialOperations), {});
+assert.ok(Object.keys(validateDutyBatch(values, [duty("reverse", "2026-11-02T22:00", "2026-11-02T06:00")], initialOperations)).length);
+assert.ok(Object.keys(validateDutyBatch(values, [duty("early", "2026-10-31T08:00", "2026-10-31T16:00")], initialOperations)).length);
+assert.ok(Object.keys(validateDutyBatch(values, [duty("late", "2027-01-02T08:00", "2027-01-02T16:00")], initialOperations)).length);
+assert.ok(Object.keys(validateDutyBatch({ ...values, deploymentId: "missing" }, [tuesday], saved)).length);
+assert.ok(Object.keys(validateDutyBatch(values, [], initialOperations)).length);
+const staffing = structuredClone(saved);
+staffing.deployments[0].employee_id = 194;
+staffing.shifts.push({ ...staffing.shifts[0], shift_assignment_id: "SECOND", scheduled_start: isoLocal("2026-11-02T16:00"), scheduled_end: isoLocal("2026-11-02T20:00") });
+assert.deepEqual(validateDutyBatch(values, [duty("long", "2026-11-02T08:00", "2026-11-02T20:00")], staffing), {}, "Sequential shifts must not count as simultaneous staffing");
+staffing.posts = staffing.posts.map(row => ({ ...row, required_guards: 1 }));
+assert.ok(Object.keys(validateDutyBatch(values, [monday], staffing)).length, "Full posts are blocked");
+assert.equal(isoLocal("2026-11-02T08:00"), "2026-11-02T00:00:00.000Z");
+console.log("15 scheduling checks passed.");

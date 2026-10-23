@@ -1,7 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { AddressMap, type Pin } from "./address-map";
-import { Heading, Section, InputField, Notice } from "./form-ui";
+import { Heading, Section, InputField, Notice, SuccessDialog } from "./form-ui";
 import { updateStore, uid, OFFICER, today, type StaffAccount } from "./domain";
 
 const roles = [{ id: "hr", name: "Human Resources" }, { id: "finance", name: "Finance" }, { id: "operations", name: "Operations" }, { id: "logistics", name: "Logistics" }];
@@ -42,7 +42,7 @@ export function StaffRegistrationForm() {
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to register this staff member."); }
   }
   return <><Heading title="Staff account registration">Create an administrative staff account and assign its access role.</Heading><form key={formKey} className="production-form form-main" onSubmit={submit}>
-    <Notice message={error}/><Notice message={success} success/>
+    <Notice message={error}/><SuccessDialog title="Staff account registered" message={success} onDismiss={() => setSuccess("")}/>
     <Section title="Personal information"><div className="field-grid">
       <InputField label="First name" required><input name="first_name" required maxLength={80} autoComplete="given-name"/></InputField>
       <InputField label="Last name" required><input name="last_name" required maxLength={80} autoComplete="family-name"/></InputField>

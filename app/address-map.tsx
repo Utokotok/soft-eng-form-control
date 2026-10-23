@@ -4,7 +4,7 @@ import type { Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin } from "lucide-react";
 export type Pin = { latitude: number; longitude: number };
-export function AddressMap({ value, onChange }: { value: Pin | null; onChange: (pin: Pin) => void }) {
+export function AddressMap({ value, onChange, label = "Home location" }: { value: Pin | null; onChange: (pin: Pin) => void; label?: string }) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const marker = useRef<Marker | null>(null);
@@ -23,7 +23,7 @@ export function AddressMap({ value, onChange }: { value: Pin | null; onChange: (
       const icon = L.divIcon({ className: "address-pin", html: '<span aria-hidden="true">●</span>', iconSize: [30, 38], iconAnchor: [15, 30] });
       const place = (latitude: number, longitude: number) => {
         if (marker.current) marker.current.setLatLng([latitude, longitude]);
-        else { marker.current = L.marker([latitude, longitude], { draggable: true, icon, title: "Home address pin — drag to adjust" }).addTo(view); marker.current.on("dragend", () => { const point = marker.current!.getLatLng(); changed.current({ latitude: point.lat, longitude: point.lng }); }); }
+        else { marker.current = L.marker([latitude, longitude], { draggable: true, icon, title: `${label} pin — drag to adjust` }).addTo(view); marker.current.on("dragend", () => { const point = marker.current!.getLatLng(); changed.current({ latitude: point.lat, longitude: point.lng }); }); }
         changed.current({ latitude, longitude });
       };
       view.on("click", event => place(event.latlng.lat, event.latlng.lng));
@@ -38,5 +38,5 @@ export function AddressMap({ value, onChange }: { value: Pin | null; onChange: (
     const L = await import("leaflet");
     map.current.fire("click", { latlng: L.latLng(map.current.getCenter()) });
   }
-  return <div className="address-map"><div className="map-label"><strong><MapPin size={15}/>Home location <span>*</span></strong><span>Click the map or drag the pin.</span></div><div ref={element} className="map-canvas" aria-label="Home address map. Arrow keys to pan, plus and minus to zoom, Enter to place a pin."/><div className="map-footer"><span>{value ? `${value.latitude.toFixed(6)}, ${value.longitude.toFixed(6)}` : "No location selected"}</span><button className="button secondary" type="button" disabled={!ready} onClick={pinCenter}>Pin map center</button></div>{error && <p className="error-text" role="alert">{error}</p>}</div>;
+  return <div className="address-map"><div className="map-label"><strong><MapPin size={15}/>{label} <span>*</span></strong><span>Click the map or drag the pin.</span></div><div ref={element} className="map-canvas" aria-label={`${label} map. Arrow keys to pan, plus and minus to zoom, Enter to place a pin.`}/><div className="map-footer"><span>{value ? `${value.latitude.toFixed(6)}, ${value.longitude.toFixed(6)}` : "No location selected"}</span><button className="button secondary" type="button" disabled={!ready} onClick={pinCenter}>Pin map center</button></div>{error && <p className="error-text" role="alert">{error}</p>}</div>;
 }

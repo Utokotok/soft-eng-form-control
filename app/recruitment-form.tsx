@@ -2,7 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { UploadCloud, ChevronRight, Check, FileText } from "lucide-react";
 import { AddressMap, type Pin } from "./address-map";
-import { Heading, Section, InputField, Notice, fileError } from "./form-ui";
+import { Heading, Section, InputField, Notice, SuccessDialog, fileError } from "./form-ui";
 import { saveFiles, updateStore, uid, OFFICER, type Application } from "./domain";
 import { phsGroups, repeatGroups } from "./phs-fields";
 import { samplePhsValues, samplePhsRows } from "./phs-sample";
@@ -23,6 +23,7 @@ export function RecruitmentForm() {
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => { const urls = sources.map(file => URL.createObjectURL(file)); setSourceUrls(urls); return () => urls.forEach(url => URL.revokeObjectURL(url)); }, [sources]);
   function upload(files: FileList | null) {
@@ -30,7 +31,7 @@ export function RecruitmentForm() {
     const selected = Array.from(files);
     if (selected.length > 10) return setError("Attach up to 10 PHS pages.");
     for (const file of selected) { const problem = fileError(file); if (problem) return setError(problem); }
-    setSources(selected); setSourceIndex(0); setValues({ ...samplePhsValues }); setRepeated(samplePhsRows()); setGroupIndex(0); setPin(null); setVerified(false); setError(""); setSuccess("");
+    setSources(selected); setSourceIndex(0); setValues({ ...samplePhsValues }); setRepeated(samplePhsRows()); setGroupIndex(0); setPin(null); setVerified(false); setError(""); setSuccess(""); setSubmitted(false);
   }
   function verify() {
     setError("");
@@ -46,6 +47,7 @@ export function RecruitmentForm() {
     setStep(2);
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
+    if (submitted || busy) { event.preventDefault(); return; }
     event.preventDefault(); setError(""); setSuccess("");
     if (!event.currentTarget.reportValidity()) return;
     if (!pin) return setError("Pin the applicant’s home location on the map.");
@@ -69,6 +71,7 @@ export function RecruitmentForm() {
         if (store.applications.some(record => record.person.first_name.toLowerCase() === person.first_name.toLowerCase() && record.person.last_name.toLowerCase() === person.last_name.toLowerCase() && record.person.birth_date === person.birth_date)) throw new Error("An application with the same name and birth date already exists. Review that record first.");
         return { ...store, applications: [...store.applications, application] };
       });
+      setSubmitted(true);
       setSuccess(`${id} saved. Application submitted; supporting documents are pending verification.`);
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save application."); }
     finally { setBusy(false); }
@@ -78,7 +81,7 @@ export function RecruitmentForm() {
 
   return <><Heading title="Applicant intake">Upload the PHS, verify the information, then complete the record.</Heading>
     <div className="intake-progress">{["Upload PHS", "Verify information", "Complete record"].map((label, index) => <button key={label} type="button" disabled={index > step} onClick={() => { setStep(index); setError(""); }} className={step === index ? "current" : ""}><span>{index < step ? <Check size={14}/> : index + 1}</span>{label}{index < 2 && <ChevronRight size={15}/>}</button>)}</div>
-    <Notice message={error}/><Notice message={success} success/>
+    <Notice message={error}/><SuccessDialog title="Applicant record saved" message={success} onDismiss={() => setSuccess("")}/>
     {step === 0 && <div className="production-form form-main"><Section title="Personal History Statement"><p className="section-note">Upload all completed and signed pages in their original order.</p><label className="phs-upload"><UploadCloud size={30}/><strong>Select PHS pages</strong><span>PDF, JPG or PNG · Up to 10 MB per file · Up to 10 files</span><input type="file" multiple accept="application/pdf,image/jpeg,image/png" aria-label="Upload PHS pages" onChange={event => upload(event.target.files)}/></label>{sources.length > 0 && <><div className="source-file-list">{sources.map((file, index) => <div key={index}><FileText size={16}/><span>{file.name}</span><small>{(file.size / 1024 / 1024).toFixed(1)} MB</small></div>)}</div><p className="prefill-note">Sample values prefilled. Check and correct them against the uploaded PHS.</p></>}</Section><div className="form-actions"><button type="button" className="button primary" disabled={!sources.length} onClick={() => { setStep(1); setError(""); }}>Verify information<ChevronRight size={16}/></button></div></div>}
     {step === 1 && <div className="phs-review-layout">{sourcePanel}<div className="phs-admin"><p className="prefill-note">Sample prefill · Verify every section against the original PHS.</p><div className="phs-group-tabs" aria-label="PHS sections">{phsGroups.map((group, index) => <button key={group.title} type="button" className={index === groupIndex ? "selected" : ""} onClick={() => setGroupIndex(index)}>{group.title}</button>)}<button type="button" className={groupIndex === phsGroups.length ? "selected" : ""} onClick={() => setGroupIndex(phsGroups.length)}>History & references</button></div>
       {activeGroup ? <Section title={activeGroup.title}><div className="field-grid">{activeGroup.fields.map(field => <InputField key={field.key} label={field.label} required={field.required}>{field.options ? <select value={values[field.key] || ""} onChange={event => { setValues(current => ({ ...current, [field.key]: event.target.value })); setVerified(false); }}><option value="">Not stated</option>{field.options.map(option => <option key={option}>{option}</option>)}</select> : <input type={field.type || "text"} value={values[field.key] || ""} maxLength={field.key.includes("address") ? 500 : 120} min={field.type === "number" ? 0 : undefined} onChange={event => { setValues(current => ({ ...current, [field.key]: event.target.value })); setVerified(false); }}/>}</InputField>)}</div></Section> : <div className="form-main">{repeatGroups.map(group => <Section key={group.key} title={group.title}><div className="repeat-rows">{(repeated[group.key] || []).map((row, rowIndex) => <div className="repeat-row" key={rowIndex}>{group.columns.map((column, columnIndex) => <InputField label={column} key={column}><input value={row[columnIndex] || ""} onChange={event => { setRepeated(current => ({ ...current, [group.key]: current[group.key].map((entry, i) => i === rowIndex ? entry.map((value, j) => j === columnIndex ? event.target.value : value) : entry) })); setVerified(false); }}/></InputField>)}<button type="button" className="clear-button" aria-label={`Remove ${group.title} row ${rowIndex + 1}`} onClick={() => setRepeated(current => ({ ...current, [group.key]: current[group.key].filter((_, i) => i !== rowIndex) }))}>Remove</button></div>)}</div><button type="button" className="button secondary" onClick={() => setRepeated(current => ({ ...current, [group.key]: [...(current[group.key] || []), group.columns.map(() => "")] }))}>Add row</button></Section>)}</div>}
@@ -86,6 +89,6 @@ export function RecruitmentForm() {
     {step === 2 && <form className="production-form form-main" onSubmit={submit}><Section title="Home location"><p className="section-note">{values.home_address}</p><AddressMap value={pin} onChange={setPin}/></Section><Section title="Supporting requirements"><p className="section-note">The original PHS is attached. Add the available requirements for document verification.</p><div className="requirement-chips">{documentTypes.map(type => <span key={type} className={documents.some(document => document.type === type && document.file) ? "attached" : ""}>{type}</span>)}</div><div className="document-rows">{documents.map((document, index) => {
       const change = (patch: Partial<DocumentEntry>) => setDocuments(current => current.map((entry, i) => i === index ? { ...entry, ...patch } : entry));
       return <div className="document-entry" key={index}><div className="field-grid"><InputField label="Document type"><select value={document.type} onChange={event => change({ type: event.target.value })}>{documentTypes.map(type => <option key={type}>{type}</option>)}</select></InputField><InputField label="File" required hint="PDF, JPG or PNG · Up to 10 MB"><input type="file" required accept="application/pdf,image/jpeg,image/png" onChange={event => change({ file: event.target.files?.[0] || null })}/></InputField><InputField label="Document number"><input value={document.document_number} maxLength={80} onChange={event => change({ document_number: event.target.value })}/></InputField><InputField label="Issued on"><input type="date" value={document.issued_on} onChange={event => change({ issued_on: event.target.value })}/></InputField><InputField label="Expires on"><input type="date" value={document.expires_on} onChange={event => change({ expires_on: event.target.value })}/></InputField></div><button className="clear-button" type="button" onClick={() => setDocuments(current => current.filter((_, i) => i !== index))}>Remove document</button></div>;
-    })}</div><button type="button" className="button secondary" onClick={() => setDocuments(current => [...current, { type: documentTypes.find(type => !current.some(doc => doc.type === type)) || documentTypes[0], file: null, document_number: "", issued_on: "", expires_on: "" }])}>Add requirement</button></Section><Section title="Administrative review"><InputField label="HR remarks"><textarea rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} maxLength={2000} placeholder="Internal review notes"/></InputField><label className="native-check"><input type="checkbox" required/><span>The applicant has consented to processing their personal information.</span></label></Section><div className="form-actions"><button type="button" className="button secondary" onClick={() => setStep(1)}>Back</button><button className="button primary" type="submit" disabled={busy || Boolean(success)}>{busy ? "Saving…" : "Save applicant record"}</button></div></form>}
+    })}</div><button type="button" className="button secondary" onClick={() => setDocuments(current => [...current, { type: documentTypes.find(type => !current.some(doc => doc.type === type)) || documentTypes[0], file: null, document_number: "", issued_on: "", expires_on: "" }])}>Add requirement</button></Section><Section title="Administrative review"><InputField label="HR remarks"><textarea rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} maxLength={2000} placeholder="Internal review notes"/></InputField><label className="native-check"><input type="checkbox" required/><span>The applicant has consented to processing their personal information.</span></label></Section><div className="form-actions"><button type="button" className="button secondary" onClick={() => setStep(1)}>Back</button><button className="button primary" type="submit" disabled={busy || submitted}>{busy ? "Saving…" : submitted ? "Applicant record saved" : "Save applicant record"}</button></div></form>}
   </>;
 }

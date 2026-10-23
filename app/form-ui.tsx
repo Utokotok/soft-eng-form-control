@@ -1,5 +1,5 @@
 "use client";
-import { useId, type ReactNode, type ReactElement, cloneElement, isValidElement } from "react";
+import { useEffect, useId, useRef, type ReactNode, type ReactElement, cloneElement, isValidElement } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 export function Heading({ title, children }: { title: string; children: ReactNode }) { return <div className="page-intro"><div><h1>{title}</h1><p>{children}</p></div></div>; }
 export function Section({ title, children }: { title: string; children: ReactNode }) { return <section className="form-card"><div className="section-heading"><h2>{title}</h2></div>{children}</section>; }
@@ -8,5 +8,24 @@ export function InputField({ label, hint, required, children }: { label: string;
   return <div className="field"><label htmlFor={id}>{label}{required && <span> *</span>}</label>{isValidElement(children) ? cloneElement(children as ReactElement<Record<string, unknown>>, { id, "aria-describedby": hint ? `${id}-help` : undefined }) : children}{hint && <small id={`${id}-help`}>{hint}</small>}</div>;
 }
 export function Notice({ message, success = false }: { message: string; success?: boolean }) { if (!message) return null; return <div className={success ? "saved-message" : "error-summary"} role={success ? "status" : "alert"}>{success ? <CheckCircle2 size={18}/> : <XCircle size={18}/>}<span>{message}</span></div>; }
+export function SuccessDialog({ message, title = "Saved successfully", onDismiss, children }: { message: string; title?: string; onDismiss: () => void; children?: ReactNode }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const id = useId();
+  useEffect(() => {
+    const element = dialog.current;
+    if (!message || !element) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    element.showModal();
+    return () => { element.close(); document.body.style.overflow = previousOverflow; };
+  }, [message]);
+  return <dialog ref={dialog} className="success-dialog" aria-labelledby={`${id}-title`} aria-describedby={`${id}-message`} onCancel={event => { event.preventDefault(); onDismiss(); }}>
+    <div className="success-dialog-icon"><CheckCircle2 size={28} aria-hidden="true"/></div>
+    <h2 id={`${id}-title`}>{title}</h2>
+    <p id={`${id}-message`}>{message}</p>
+    {children && <div className="success-dialog-details">{children}</div>}
+    <div className="success-dialog-actions"><button type="button" autoFocus className="button primary" onClick={onDismiss}>Done</button></div>
+  </dialog>;
+}
 export function Facts({ items }: { items: [string, ReactNode][] }) { return <dl className="context-facts">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || "—"}</dd></div>)}</dl>; }
 export function fileError(file: File, limit = 10) { return file.size > limit * 1024 * 1024 ? `Files must be ${limit} MB or smaller.` : !["image/jpeg", "image/png", "application/pdf"].includes(file.type) ? "Use a PDF, JPG, or PNG file." : ""; }

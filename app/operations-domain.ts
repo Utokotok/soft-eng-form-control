@@ -1,7 +1,7 @@
 import { GUARD, today, type Store } from "./domain";
 
 export type Client = { client_id: string; client_name: string; business_address: string; contact_name: string; contact_number: string; contact_email: string | null; status: "active"; created_at: string };
-export type ClientSite = { site_id: string; client_id: string; site_name: string; site_address: string; region_code: string; status: "active" };
+export type ClientSite = { site_id: string; client_id: string; site_name: string; site_address: string; site_location?: { latitude: number; longitude: number }; region_code: string; status: "active" };
 export type Post = { post_id: string; site_id: string; post_name: string; required_guards: number; status: "active" };
 export type Deployment = { deployment_id: string; employee_id: number; post_id: string; start_at: string; end_at: string | null; status: "active" };
 export type Shift = { shift_assignment_id: string; deployment_id: string; scheduled_start: string; scheduled_end: string; rest_day_indicator: boolean; status: "assigned" };
@@ -21,13 +21,15 @@ export const initialOperations: OperationsData = {
 export function operations(store: Store): OperationsData { return store.operations || initialOperations; }
 export function readLocalDate(value: string) { return Date.parse(`${value}:00+08:00`); }
 export function isoLocal(value: string) { return new Date(readLocalDate(value)).toISOString(); }
-export type ScheduleValues = { guard: string; site: string; post: string; deploymentStart: string; deploymentEnd: string; shiftStart: string; shiftEnd: string; ddo: string; restDay: boolean };
+export type ScheduleValues = { deploymentId?: string; guard: string; site: string; post: string; deploymentStart: string; deploymentEnd: string; shiftStart: string; shiftEnd: string; ddo: string; restDay: boolean };
 export function validateSchedule(values: ScheduleValues, data: OperationsData): Record<string, string> {
   const errors: Record<string, string> = {};
   const guard = guards.find(row => row.employee_id === Number(values.guard));
   const post = data.posts.find(row => row.post_id === values.post && row.site_id === values.site && row.status === "active");
   const site = data.sites.find(row => row.site_id === values.site && row.status === "active");
   const ddo = ddos.find(row => row.ddo_id === values.ddo);
+  const existing = values.deploymentId ? data.deployments.find(row => row.deployment_id === values.deploymentId && row.status === "active") : null;
+  if (values.deploymentId && (!existing || existing.employee_id !== Number(values.guard) || existing.post_id !== values.post || Date.parse(existing.start_at) !== readLocalDate(values.deploymentStart) || (existing.end_at ? Date.parse(existing.end_at) : Infinity) !== (values.deploymentEnd ? readLocalDate(values.deploymentEnd) : Infinity))) errors.deploymentId = "Select a valid existing deployment again.";
   if (!guard || guard.employment_status !== "active" || guard.license_expires_on < today()) errors.guard = "Choose an active guard with a valid security license.";
   if (!site) errors.site = "Select an active client site.";
   if (!post) errors.post = "Choose a post belonging to the selected site.";
@@ -37,16 +39,37 @@ export function validateSchedule(values: ScheduleValues, data: OperationsData): 
   if (values.deploymentEnd && (!Number.isFinite(end) || end <= start)) errors.deploymentEnd = "Deployment end must be after its start.";
   if (Number.isFinite(shiftStart) && Number.isFinite(shiftEnd) && shiftEnd <= shiftStart) errors.shiftEnd = "Shift end must be after its start. Use the next date for an overnight shift.";
   if (shiftStart < start || shiftEnd > end) errors.shiftStart = "The shift must fall within the deployment period.";
-  if (!ddo) errors.ddo = "Choose a Duty Detail Order.";
+  if (!ddo || ddo.status !== "active") errors.ddo = "Choose an active Duty Detail Order.";
   else if (start < Date.parse(ddo.valid_from) || shiftEnd > Date.parse(ddo.valid_until) || (Number.isFinite(end) && end > Date.parse(ddo.valid_until))) errors.ddo = "The DDO must cover the deployment and scheduled shift.";
+  if (guard && Number.isFinite(shiftEnd) && shiftEnd > Date.parse(`${guard.license_expires_on}T23:59:59+08:00`)) errors.guard = "The guard’s license must remain valid through the end of duty.";
+  if (existing && !data.ddoAssignments.some(row => row.deployment_id === existing.deployment_id && row.ddo_id === values.ddo && row.status === "active" && shiftStart >= Date.parse(row.assignment_from) && shiftEnd <= Date.parse(row.assignment_until))) errors.ddo = "This shift falls outside the deployment’s DDO assignment. Update its authorization before scheduling.";
   const overlaps = (a: number, b: number, c: number, d: number) => a < d && c < b;
-  if (data.deployments.some(row => row.employee_id === guard?.employee_id && row.status === "active" && overlaps(start, end, Date.parse(row.start_at), row.end_at ? Date.parse(row.end_at) : Infinity))) errors.guard = "This guard already has an overlapping active deployment.";
+  if (data.shifts.some(row => {
+    const deployment = data.deployments.find(record => record.deployment_id === row.deployment_id);
+    return row.status === "assigned" && deployment?.status === "active" && deployment.employee_id === guard?.employee_id && overlaps(shiftStart, shiftEnd, Date.parse(row.scheduled_start), Date.parse(row.scheduled_end));
+  })) errors.shiftStart = "This duty overlaps another scheduled shift for this guard.";
   if (post) {
     const assigned = data.shifts.filter(row => {
       const deployment = data.deployments.find(record => record.deployment_id === row.deployment_id);
       return row.status === "assigned" && deployment?.status === "active" && deployment.post_id === post.post_id && overlaps(shiftStart, shiftEnd, Date.parse(row.scheduled_start), Date.parse(row.scheduled_end));
-    }).length;
-    if (assigned >= post.required_guards) errors.post = "This post is fully staffed for the selected shift.";
+    });
+    // Measure concurrent staffing, not the total number of shifts touching this interval.
+    const events = assigned.flatMap(row => [[Math.max(shiftStart, Date.parse(row.scheduled_start)), 1], [Math.min(shiftEnd, Date.parse(row.scheduled_end)), -1]]);
+    events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    let concurrent = 0;
+    for (const [, delta] of events) { concurrent += delta; if (concurrent >= post.required_guards) { errors.post = "This post is fully staffed during part of the selected duty."; break; } }
   }
+  return errors;
+}
+
+export type DutyRow = { id: string; shiftStart: string; shiftEnd: string; restDay: boolean };
+export function validateDutyBatch(values: ScheduleValues, rows: DutyRow[], data: OperationsData) {
+  const errors: Record<string, string> = {};
+  if (!rows.length) errors.duties = "Add at least one duty shift.";
+  rows.forEach((row, index) => {
+    const problems = validateSchedule({ ...values, ...row }, data);
+    for (const [key, message] of Object.entries(problems)) errors[["shiftStart", "shiftEnd", "post", "ddo", "guard"].includes(key) ? `duty-${row.id}-${key}` : key] = message;
+    if (rows.slice(0, index).some(previous => readLocalDate(row.shiftStart) < readLocalDate(previous.shiftEnd) && readLocalDate(previous.shiftStart) < readLocalDate(row.shiftEnd))) errors[`duty-${row.id}-shiftStart`] = "This duty overlaps another row in this schedule.";
+  });
   return errors;
 }
