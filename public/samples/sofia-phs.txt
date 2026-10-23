@@ -1,0 +1,37 @@
+# SAMPLE - NOT VALID FOR OFFICIAL USE
+# All people, identifiers and organizations below are fictional.
+Application date: 2026-10-23
+Application for: Security Guard
+First name: Sofia
+Middle name: Cruz
+Last name: Santos
+Date of birth: 1996-08-21
+City / home address: 12 Fictional Street, Marikina City
+Contact number: 09170000002
+License number: SAMPLE-LICENSE-SOFIA
+License expiry: 2027-08-18
+Sex: Female
+Civil status: Single
+Citizenship: Filipino
+Languages: Filipino, English
+Special skills: First aid, incident reporting
+Emergency contact: Alex Example
+Relationship: Sibling
+Emergency contact telephone: 09170000009
+Elementary school: Fictional Elementary School
+elementary_year: 2010
+secondary_year: 2014
+criminal_case: No
+background_consent: Yes
+medical_consent: Yes
+training_consent: Yes
+overtime_consent: Yes
+policy_consent: Yes
+assignment_consent: Yes
+siblings: Alex Example | 28 | Marikina City | Teacher
+dependents: Sam Example | Sibling | 16
+seminars: 2025-06-10 to 2025-06-11 | Fictional First Aid Training | 2025-06-11 | Sample certificate
+employment: Fictional Security Company | 2022-01 to 2026-06 | Security Guard | PHP 18000
+references: Taylor Example | Marikina City | Former supervisor
+references: Robin Example | Marikina City | Teacher
+references: Casey Example | Marikina City | Business owner

@@ -1,5 +1,9 @@
 # Document and ERD alignment review
 
+## Text-document contribution (supersedes fixed sample prefill below)
+
+Applicant intake now accepts labeled UTF-8 TXT files and reads their actual contents into PHS fields and repeating sections. Supporting TXT attachments populate document numbers and issue/expiry dates. Three fictional sample sets and their format instructions are in `public/samples/`. PDF and image files remain attachable with manual data entry; no OCR runs. Verification, consent, home pinning, and HR remarks stay manual. Replacing PHS sources clears prior applicant-specific state. New intake provenance is `text` or `manual`; historical `dummy` records remain compatible. The earlier fixed-prefill descriptions below are historical.
+
 ## Current form selection update
 
 ### Multiple duties and site pinning update
