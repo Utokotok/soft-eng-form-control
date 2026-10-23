@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Red Eagle Security",
-  description: "Personnel, logistics, and attendance management.",
+  description: "Applicant intake, staff registration, client sites, and guard deployment scheduling.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 

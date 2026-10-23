@@ -8,7 +8,7 @@ const source = (await readFile(new URL("../app/text-documents.ts", import.meta.u
 const { parseTextDocument, intakeFileError, isTextDocument } = await import(moduleUrl(source));
 const names = new Set();
 for (const slug of ["miguel", "sofia", "daniel"]) {
-  const read = kind => readFile(new URL(`../public/samples/${slug}-${kind}.txt`, import.meta.url), "utf8");
+  const read = kind => readFile(new URL(`../tests/fixtures/${slug}-${kind}.txt`, import.meta.url), "utf8");
   const result = parseTextDocument(await read("phs"), "phs");
   assert.deepEqual(result.warnings, []);
   assert.equal(result.values.first_name.toLowerCase(), slug);
