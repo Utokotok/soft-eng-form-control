@@ -178,6 +178,10 @@ button { color: inherit; }
 .supporting-review h3 { font-family: Georgia, serif; margin: 0 0 8px; font-size: 23px; }.supporting-review > p, .preview-records > p { font-size: 12px; color: var(--muted); line-height: 1.6; }.control-inventory { margin-top: 20px; display: grid; gap: 10px; }.control-inventory > div { display: flex; justify-content: space-between; padding-bottom: 9px; border-bottom: 1px solid #e9eeeb; font-size: 12px; }.control-inventory strong { color: var(--red); }.supporting-review .audit-note p { font-size: 11px; }.preview-records { margin-top: 24px; }.preview-record { display: flex; flex-direction: column; gap: 6px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 11px; }.preview-record small { color: var(--muted); }
 .saved-message { display: flex; align-items: flex-start; gap: 10px; padding: 16px; border: 1px solid #bddbc9; border-radius: 9px; color: var(--green); background: #eff9f3; }.saved-message strong, .saved-message span { display: block; font-size: 12px; }.saved-message span { margin-top: 5px; font-size: 11px; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #ba6b70; outline-offset: 3px; }
+a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #ba6b70; outline-offset: 3px; }
+.skip-link { position: fixed; top: 8px; left: 12px; transform: translateY(-180%); z-index: 100; background: white; color: #172223; border: 2px solid #a52b36; border-radius: 6px; padding: 12px 18px; }
+.skip-link:focus { transform: none; }
+@media (max-width: 760px) { .sidebar:not(.sidebar-open) { visibility: hidden; } }
 
 @media (max-width: 1080px) {
   .app-shell { grid-template-columns: 224px minmax(0, 1fr); }

@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { AddressMap, type Pin } from "./address-map";
+import { AddressMap, isValidPin, type Pin } from "./address-map";
 import { Heading, Section, InputField, Notice, SuccessDialog } from "./form-ui";
 import { updateStore, uid, OFFICER, today, type StaffAccount } from "./domain";
 
@@ -11,7 +11,7 @@ export function StaffRegistrationForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [formKey, setFormKey] = useState(0);
-  function clear() { setFormKey(current => current + 1); setPin(null); setError(""); setSuccess(""); }
+  function clear() { setFormKey(current => current + 1); setPin(null); setError(""); setSuccess(""); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('input[name="first_name"]')?.focus()); }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setSuccess("");
     const form = event.currentTarget;
@@ -22,7 +22,7 @@ export function StaffRegistrationForm() {
       if (!text(name)) { setError("Complete the required staff details."); const input = form.elements.namedItem(name); if (input instanceof HTMLElement) input.focus(); return; }
     }
     if (text("birth_date") >= today()) return setError("Birth date must be in the past.");
-    if (!pin) return setError("Pin the staff member’s home location on the map.");
+    if (!isValidPin(pin)) return setError("Pin the staff member’s home location on the map.");
     if (!roles.some(role => role.id === text("role_id"))) return setError("Select a permitted staff role.");
     try {
       const record: StaffAccount = {
