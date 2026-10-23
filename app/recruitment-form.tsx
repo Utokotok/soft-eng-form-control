@@ -6,6 +6,7 @@ import { Heading, Section, InputField, Notice, SuccessDialog } from "./form-ui";
 import { saveFiles, updateStore, uid, OFFICER, today, type Application } from "./domain";
 import { phsRules, validatePhs } from "./phs-validation";
 import { phsGroups, repeatGroups } from "./phs-fields";
+import { samplePhsValues, samplePhsRows } from "./phs-sample";
 import { intakeFileError, isTextDocument, parseTextDocument, textDocumentAccept } from "./text-documents";
 
 const documentTypes = ["PSA birth certificate", "PNP / NBI clearance", "Drug test", "Neuro-psychiatric test", "Security license — front", "Security license — back", "Prior employment certificate", "Seminar / achievement certificate", "Data privacy consent form"];
@@ -39,7 +40,6 @@ export function RecruitmentForm() {
   const [reading, setReading] = useState(false);
   const [sourceTexts, setSourceTexts] = useState<string[]>([]);
   const [readNote, setReadNote] = useState("");
-  const [prefillSource, setPrefillSource] = useState<"text" | "manual">("manual");
   useEffect(() => () => { uploadVersion.current += 1; }, []);
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -47,15 +47,12 @@ export function RecruitmentForm() {
     if (selected.length > 10) return setError("Attach up to 10 PHS pages.");
     for (const file of selected) { const problem = intakeFileError(file); if (problem) return setError(problem); }
     const version = ++uploadVersion.current;
-    setSources(selected); setSourceIndex(0); setValues({}); setRepeated({}); setGroupIndex(0); setPin(null); setVerified(false); setError(""); setSuccess(""); setSubmitted(false); setDocuments([]); setRemarks(""); setSourceTexts([]); setReadNote(""); setPrefillSource("manual"); setReading(true);
+    setSources(selected); setSourceIndex(0); setValues({ ...samplePhsValues }); setRepeated(samplePhsRows()); setGroupIndex(0); setPin(null); setVerified(false); setError(""); setSuccess(""); setSubmitted(false); setDocuments([]); setRemarks(""); setSourceTexts([]); setReadNote("Sample values prefilled. Check and correct them against the uploaded PHS."); setReading(true);
     try {
       const texts = await Promise.all(selected.map(file => isTextDocument(file) ? file.text() : Promise.resolve("")));
       if (version !== uploadVersion.current) return;
-      const parsed = parseTextDocument(texts.filter(Boolean).join("\n"), "phs");
-      setSourceTexts(texts); setValues(parsed.values); setRepeated(parsed.repeated);
-      setPrefillSource(texts.some(Boolean) ? "text" : "manual");
-      setReadNote(texts.some(Boolean) ? ["Text fields loaded. Check every section against the original.", ...parsed.warnings].join(" ") : "PDF and image contents are not read automatically. Enter the details manually.");
-    } catch { if (version === uploadVersion.current) setError("Unable to read this text file. Replace it or enter the information manually."); }
+      setSourceTexts(texts);
+    } catch { if (version === uploadVersion.current) setError("Unable to preview this text file. Sample values remain available for manual verification."); }
     finally { if (version === uploadVersion.current) setReading(false); }
   }
   async function attachDocument(id: string, file: File | null) {
@@ -98,7 +95,7 @@ export function RecruitmentForm() {
       const person: Record<string, string> = {};
       for (const name of ["first_name", "middle_name", "last_name", "name_suffix", "birth_date", "home_address", "contact_number"]) person[name] = values[name]?.trim() || "";
       person.status = "active";
-      const application: Application = { application_id: id, application_number: id, person_id: uid("PERSON"), status: "submitted", submitted_at: new Date().toISOString(), person, home_location: pin, personnel_documents: [...sourceFiles.map(file => ({ document_type: "Personal History Statement", file_id: file.id, document_number: "", issued_on: "", expires_on: "", verification_status: "pending" as const })), ...documents.map((document, index) => ({ document_type: document.type, file_id: extraFiles[index].id, document_number: document.document_number, issued_on: document.issued_on, expires_on: document.expires_on, verification_status: "pending" as const }))], phs_data: { ...values, ...repeated }, intake_metadata: { prefill_source: prefillSource, manually_checked_by: OFFICER.user_id, manually_checked_at: new Date().toISOString() }, decision_notes: remarks };
+      const application: Application = { application_id: id, application_number: id, person_id: uid("PERSON"), status: "submitted", submitted_at: new Date().toISOString(), person, home_location: pin, personnel_documents: [...sourceFiles.map(file => ({ document_type: "Personal History Statement", file_id: file.id, document_number: "", issued_on: "", expires_on: "", verification_status: "pending" as const })), ...documents.map((document, index) => ({ document_type: document.type, file_id: extraFiles[index].id, document_number: document.document_number, issued_on: document.issued_on, expires_on: document.expires_on, verification_status: "pending" as const }))], phs_data: { ...values, ...repeated }, intake_metadata: { prefill_source: "dummy", manually_checked_by: OFFICER.user_id, manually_checked_at: new Date().toISOString() }, decision_notes: remarks };
       updateStore(store => {
         if (store.applications.some(record => record.person.first_name.toLowerCase() === person.first_name.toLowerCase() && record.person.last_name.toLowerCase() === person.last_name.toLowerCase() && record.person.birth_date === person.birth_date)) throw new Error("An application with the same name and birth date already exists. Review that record first.");
         return { ...store, applications: [...store.applications, application] };

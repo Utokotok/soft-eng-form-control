@@ -3,7 +3,7 @@
 All nine `.txt` files are samples, not official documents. Each applicant has a PHS, license, and clearance. Download them from Applicant intake or use the files in this folder.
 
 1. Upload one applicant's `*-phs.txt` under **Select PHS pages**.
-2. Open **Verify information**. Compare the original text with the editable fields and history rows, then explicitly confirm verification.
+2. Open **Verify information**. The original fixed dummy applicant is prefilled regardless of which file is uploaded. Compare and manually correct the fields against the original text, then explicitly confirm verification.
 3. Continue, pin a home location, and add a requirement. Choose **Security license — front** or **PNP / NBI clearance**, then upload the matching TXT file. Check the populated metadata.
 4. Complete consent and save. The saved application and documents remain pending review. Repeat with a different applicant to demonstrate content-based extraction.
 
@@ -25,6 +25,6 @@ references: Name | Address | Occupation
 
 Repeat a group line to add another row (up to 50 per group). A pipe cannot appear inside a cell. Regular field values can contain colons.
 
-Supporting documents recognize `Document number`, `Issued on`, and `Expires on`. Other metadata is entered manually. TXT parsing does not authenticate a document or check its owner. PDF/JPG/PNG files still attach and preview as before; their contents require manual entry, with no fixed sample prefill or OCR.
+Supporting documents recognize `Document number`, `Issued on`, and `Expires on`. Other metadata is entered manually. TXT parsing does not authenticate a document or check its owner. All PHS uploads (TXT/PDF/JPG/PNG) retain the original fixed dummy prefill, with manual correction and no OCR. PHS text parsing rules above describe the standalone parser; PHS upload does not apply parsed values.
 
 Uploads are read locally using the browser File API, never executed. Verification, administrative remarks, consent, and map pins are never inferred from file contents. Replacing the PHS clears applicant-specific state and supporting attachments.
