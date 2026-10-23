@@ -19,7 +19,11 @@ export const initialOperations: OperationsData = {
   deployments: [], shifts: [], ddoAssignments: [],
 };
 export function operations(store: Store): OperationsData { return store.operations || initialOperations; }
-export function readLocalDate(value: string) { return Date.parse(`${value}:00+08:00`); }
+export function readLocalDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return NaN;
+  const parsed = Date.parse(`${value}:00+08:00`);
+  return Number.isFinite(parsed) && new Date(parsed + 8 * 3600000).toISOString().slice(0, 16) === value ? parsed : NaN;
+}
 export function isoLocal(value: string) { return new Date(readLocalDate(value)).toISOString(); }
 export type ScheduleValues = { deploymentId?: string; guard: string; site: string; post: string; deploymentStart: string; deploymentEnd: string; shiftStart: string; shiftEnd: string; ddo: string; restDay: boolean };
 export function validateSchedule(values: ScheduleValues, data: OperationsData): Record<string, string> {
@@ -68,7 +72,7 @@ export function validateDutyBatch(values: ScheduleValues, rows: DutyRow[], data:
   if (!rows.length) errors.duties = "Add at least one duty shift.";
   rows.forEach((row, index) => {
     const problems = validateSchedule({ ...values, ...row }, data);
-    for (const [key, message] of Object.entries(problems)) errors[["shiftStart", "shiftEnd", "post", "ddo", "guard"].includes(key) ? `duty-${row.id}-${key}` : key] = message;
+    for (const [key, message] of Object.entries(problems)) errors[(["shiftStart", "shiftEnd"].includes(key) || (values.deploymentId && ["post", "ddo", "guard"].includes(key))) ? `duty-${row.id}-${key}` : key] = message;
     if (rows.slice(0, index).some(previous => readLocalDate(row.shiftStart) < readLocalDate(previous.shiftEnd) && readLocalDate(previous.shiftStart) < readLocalDate(row.shiftEnd))) errors[`duty-${row.id}-shiftStart`] = "This duty overlaps another row in this schedule.";
   });
   return errors;

@@ -28,6 +28,16 @@ Successful saves in all four active forms open an accessible native modal confir
 
 ## Data and integration
 
+### Form-requirements audit
+
+The applicant intake contains 82 core review controls plus upload, consent, history rows and document controls across its existing steps. Staff registration contains 9 data-entry controls. Deployment creation contains 10 (including the deployment selector and one duty row); subsequent rows add three controls each. Appending duties to an existing deployment intentionally uses a shorter form with assignment details displayed rather than re-entered. Client/site registration contains 10 data-entry controls plus the required map pin. These counts exclude buttons, hidden fields, maps and read-only details. The rubric allows controls chosen from the listed types; it does not require every listed type.
+
+Shared fields connect labels to unique input IDs, enforce native required attributes, provide placeholders or linked helpers, report native validity errors inline, clear errors on reset and enforce text lengths. PHS review additionally validates required values, real dates, birth dates, phone formats, numeric ranges/integer counts, graduation years, dropdown options and complete history/reference rows. Schedule validation covers conflicts, chronology, DDO/license coverage and post capacity. File inputs enforce allowed types, non-empty files and size limits. Client/staff fields validate email/phone formats, limits, required values and duplicate records. Map selections validate coordinate ranges.
+
+Keyboard navigation uses natural document order without positive tabindex values. Map regions use tabindex=0; headings and error summaries use tabindex=-1 for programmatic focus. Closed mobile navigation is hidden and inert; open mobile navigation contains focus and closes with Escape. Form changes and intake-step changes focus headings, dynamic duty rows receive focus on add/remove, and the skip link goes directly to the form. Map pinning supports arrows, +/- and Enter. Native success dialogs contain focus, close with Done/Escape and restore focus, with a heading fallback when the submitting control was replaced or disabled.
+
+Pure validation tests: `node scripts/test-phs-validation.mjs` (19 cases) and `node scripts/test-scheduling.mjs` (15 cases). This is a frontend/local-storage implementation, not a production authentication or server-validation system.
+
 Fixtures in `app/domain.ts` supply session, Operations, DDO, requests and initial inventory data. Browser-local records share one versioned localStorage store; image/document blobs use IndexedDB. No production API, actual authentication/RBAC, PostgreSQL or server-side verification has been connected.
 
 Camera and location need browser permission and HTTPS (or localhost). The application embeds capture metadata into the JPEG and extracts it back for the attendance event. This is application-written EXIF, not firmware EXIF. Server receipt time and verification must be added before use for payroll.

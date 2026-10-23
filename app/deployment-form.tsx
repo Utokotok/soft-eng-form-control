@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactElement } from "react";
+import { cloneElement, useRef, useState, type FormEvent, type ReactElement } from "react";
 import { Heading, Section, InputField, Notice, Facts, SuccessDialog } from "./form-ui";
 import { uid, updateStore, useStore, stamp } from "./domain";
 import { operations, guards, ddos, validateDutyBatch, isoLocal, type ScheduleValues, type DutyRow } from "./operations-domain";
@@ -10,6 +10,7 @@ const newDuty = (): DutyRow => ({ id: uid("ROW"), shiftStart: "", shiftEnd: "", 
 const localInput = (iso: string | null) => iso ? new Date(Date.parse(iso) + 8 * 3600000).toISOString().slice(0, 16) : "";
 
 export function DeploymentForm() {
+  const formRef = useRef<HTMLFormElement>(null);
   const store = useStore(), data = operations(store);
   const [values, setValues] = useState<ScheduleValues>({ ...blank });
   const [rows, setRows] = useState<DutyRow[]>([{ id: "initial", shiftStart: "", shiftEnd: "", restDay: false }]);
@@ -31,7 +32,7 @@ export function DeploymentForm() {
   function change(key: keyof ScheduleValues, value: string) { clearMessages(); setValues(current => ({ ...current, [key]: value, ...(key === "site" ? { post: "" } : {}) })); }
   function changeDuty(id: string, patch: Partial<DutyRow>) { clearMessages(); setRows(current => current.map(row => row.id === id ? { ...row, ...patch } : row)); }
   function field(key: string, label: string, control: ReactElement, required = true, hint?: string) {
-    return <div className={errors[key] ? "field-error" : ""}><InputField label={label} required={required} hint={errors[key] || hint}>{control}</InputField></div>;
+    return <div className={errors[key] ? "field-error" : ""}><InputField label={label} required={required} hint={errors[key] || hint}>{cloneElement(control as ReactElement<Record<string, unknown>>, { "aria-invalid": Boolean(errors[key]) })}</InputField></div>;
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); clearMessages();
@@ -59,7 +60,7 @@ export function DeploymentForm() {
     } catch (error) { setSaveError(error instanceof Error ? error.message : "Unable to save the schedule."); }
   }
   return <><Heading title="Guard deployment & scheduling">Assign a guard to a post and manage their duty shifts.</Heading>
-    <form className="production-form form-main" onSubmit={submit} noValidate>
+    <form ref={formRef} className="production-form form-main" onSubmit={submit} noValidate>
       <Notice message={saveError || (Object.keys(errors).length ? "Review the highlighted duty details." : "")}/><SuccessDialog title="Duty schedule saved" message={success} onDismiss={() => setSuccess("")}/>
       <Section title="Deployment">
         {field("deploymentId", "Deployment", <select name="deploymentId" value={values.deploymentId} aria-invalid={Boolean(errors.deploymentId)} onChange={event => chooseDeployment(event.target.value)}><option value="">Create a new deployment</option>{data.deployments.filter(row => row.status === "active").map(row => <option key={row.deployment_id} value={row.deployment_id}>{guards.find(guard => guard.employee_id === row.employee_id)?.name || row.employee_id} · {data.posts.find(post => post.post_id === row.post_id)?.post_name} · {row.deployment_id}</option>)}</select>, false)}
@@ -77,10 +78,10 @@ export function DeploymentForm() {
         {rows.map((row, index) => <fieldset className="duty-row" key={row.id}><legend>Duty {index + 1}</legend>
           <div className="field-grid">{field(`duty-${row.id}-shiftStart`, "Shift starts", <input name={`duty-${row.id}-shiftStart`} type="datetime-local" value={row.shiftStart} aria-invalid={Boolean(errors[`duty-${row.id}-shiftStart`])} onInput={event => changeDuty(row.id, { shiftStart: event.currentTarget.value })}/>)}
           {field(`duty-${row.id}-shiftEnd`, "Shift ends", <input name={`duty-${row.id}-shiftEnd`} type="datetime-local" value={row.shiftEnd} aria-invalid={Boolean(errors[`duty-${row.id}-shiftEnd`])} onInput={event => changeDuty(row.id, { shiftEnd: event.currentTarget.value })}/>)}</div>
-          <div className="duty-row-actions"><label className="native-check"><input type="checkbox" checked={row.restDay} onChange={event => changeDuty(row.id, { restDay: event.target.checked })}/><span>Duty on scheduled rest day</span></label><button className="button secondary" type="button" disabled={rows.length === 1} aria-label={`Remove duty ${index + 1}`} onClick={() => { clearMessages(); setRows(current => current.filter(item => item.id !== row.id)); }}>Remove</button></div>
+          <div className="duty-row-actions"><label className="native-check"><input type="checkbox" checked={row.restDay} onChange={event => changeDuty(row.id, { restDay: event.target.checked })}/><span>Duty on scheduled rest day</span></label><button className="button secondary" type="button" disabled={rows.length === 1} aria-label={`Remove duty ${index + 1}`} onClick={() => { clearMessages(); setRows(current => current.filter(item => item.id !== row.id)); requestAnimationFrame(() => { const remaining = formRef.current?.querySelectorAll<HTMLElement>(".duty-row"); remaining?.[Math.min(index, remaining.length - 1)]?.querySelector<HTMLElement>("input")?.focus(); }); }}>Remove</button></div>
           {["guard", "post", "ddo"].map(key => errors[`duty-${row.id}-${key}`] && <p className="error-text" role="alert" key={key}>{errors[`duty-${row.id}-${key}`]}</p>)}
         </fieldset>)}
-        <button className="button secondary" type="button" onClick={() => { clearMessages(); setRows(current => [...current, newDuty()]); }}>Add another duty</button>
+        <button className="button secondary" type="button" onClick={() => { clearMessages(); setRows(current => [...current, newDuty()]); requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(".duty-row:last-of-type input")?.focus()); }}>Add another duty</button>
       </Section>
       <div className="form-actions"><button type="button" className="button secondary" onClick={reset}>Clear form</button><button type="submit" className="button primary">{existing ? "Save duty shifts" : "Save deployment & duties"}</button></div>
       {existing && <Section title="Scheduled duties">{scheduled.length ? <ul className="scheduled-duties">{scheduled.map(row => <li key={row.shift_assignment_id}><span>{stamp(row.scheduled_start)} — {stamp(row.scheduled_end)}</span>{row.rest_day_indicator && <small>Rest-day duty</small>}</li>)}</ul> : <p>No duties scheduled yet.</p>}</Section>}
